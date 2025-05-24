@@ -1,18 +1,42 @@
-// 1-task
-let talaba1: [string, number, number] = ["Anvar", 20, 4.5];
-let talaba2: [string, number, number] = ["Bobur", 19, 4.8];
+import fs from "fs-extra";
+import path from "path";
+import { exec } from "child_process";
 
-//2-task
-type DataChecker = (data: number | string) => boolean;
+const inputPptx: string = "example.pptx"; // Change to your .pptx file
+const outputFolder: string = "slides_output";
 
-const checkData: DataChecker = (data) => {
-  if (typeof data === "number") {
-    return data > 0;
+async function convertPptxToPng(
+  pptxPath: string,
+  outputDir: string
+): Promise<void> {
+  if (!fs.existsSync(pptxPath)) {
+    console.error("❌ PPTX file does not exist.");
+    return;
   }
-  return data.length > 0;
-};
 
-//3-task
-type DataArray = (string | number | boolean)[];
+  fs.ensureDirSync(outputDir);
 
-let data: DataArray = ["salom", 123, true, "typescript", 456, false];
+  const command: string = `libreoffice --headless --convert-to png --outdir "${outputDir}" "${pptxPath}"`;
+
+  exec(command, (error: Error | null, stdout: string, stderr: string) => {
+    if (error) {
+      console.error("❌ Error converting PPTX to PNG:", error.message);
+      return;
+    }
+
+    console.log("✅ Conversion complete.");
+
+    const files: string[] = fs
+      .readdirSync(outputDir)
+      .filter((f) => f.endsWith(".png"));
+    files.forEach((file: string, index: number) => {
+      const oldPath: string = path.join(outputDir, file);
+      const newPath: string = path.join(outputDir, `slide_${index + 1}.png`);
+      fs.renameSync(oldPath, newPath);
+    });
+
+    console.log("✅ Slides renamed and saved in:", outputDir);
+  });
+}
+
+convertPptxToPng(inputPptx, outputFolder);
