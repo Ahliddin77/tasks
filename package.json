@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "fs-extra": "^11.3.0",
+    "pdf-poppler": "^0.2.1",
     "sharp": "^0.34.2"
   }
 }

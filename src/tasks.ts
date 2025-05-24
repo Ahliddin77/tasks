@@ -2,10 +2,10 @@ import fs from "fs-extra";
 import path from "path";
 import { exec } from "child_process";
 
-const inputPptx: string = "example.pptx"; // Change to your .pptx file
-const outputFolder: string = "slides_output";
+const inputPptx = "example.pptx";
+const outputFolder = "slides_output";
 
-async function convertPptxToPng(
+async function convertPptxToImages(
   pptxPath: string,
   outputDir: string
 ): Promise<void> {
@@ -16,27 +16,46 @@ async function convertPptxToPng(
 
   fs.ensureDirSync(outputDir);
 
-  const command: string = `libreoffice --headless --convert-to png --outdir "${outputDir}" "${pptxPath}"`;
+  const pdfPath = pptxPath.replace(/\.pptx$/i, ".pdf");
 
-  exec(command, (error: Error | null, stdout: string, stderr: string) => {
+  const convertToPdfCmd = `soffice --headless --convert-to pdf "${pptxPath}" --outdir "."`;
+
+  exec(convertToPdfCmd, async (error) => {
     if (error) {
-      console.error("❌ Error converting PPTX to PNG:", error.message);
+      console.error("❌ Error converting PPTX to PDF:", error.message);
       return;
     }
 
-    console.log("✅ Conversion complete.");
+    if (!fs.existsSync(pdfPath)) {
+      console.error(`❌ PDF file not found after conversion: ${pdfPath}`);
+      return;
+    }
 
-    const files: string[] = fs
-      .readdirSync(outputDir)
-      .filter((f) => f.endsWith(".png"));
-    files.forEach((file: string, index: number) => {
-      const oldPath: string = path.join(outputDir, file);
-      const newPath: string = path.join(outputDir, `slide_${index + 1}.png`);
-      fs.renameSync(oldPath, newPath);
-    });
+    console.log("✅ PPTX converted to PDF.");
 
-    console.log("✅ Slides renamed and saved in:", outputDir);
+    // Dynamically import pdf-poppler in ESM context
+    const popplerModule = await import("pdf-poppler");
+
+    const options = {
+      format: "png",
+      out_dir: outputDir,
+      out_prefix: "slide",
+      page: null,
+      resolution: 150,
+    };
+
+    try {
+      await popplerModule.default.convert(pdfPath, options);
+      console.log("✅ PDF converted to PNG slides.");
+
+      fs.removeSync(pdfPath);
+      console.log("🗑️ Temp PDF removed.");
+
+      console.log("📂 Slides saved in:", outputDir);
+    } catch (err) {
+      console.error("❌ Error during PDF to PNG conversion:", err);
+    }
   });
 }
 
-convertPptxToPng(inputPptx, outputFolder);
+convertPptxToImages(inputPptx, outputFolder);
